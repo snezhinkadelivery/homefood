@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/hooks/useCart';
 import { useTelegram } from '@/hooks/useTelegram';
@@ -11,8 +11,18 @@ import { DeliveryProgressBar } from '@/components/cart/DeliveryProgressBar';
 import { CartSummary } from '@/components/cart/CartSummary';
 import type { OrderItemJson } from '@/types';
 
+type BankSettings = {
+  bank_name: string;
+  bank_account: string;
+  bank_holder: string;
+};
+
+type SuccessState = {
+  orderNumber: string;
+  total: number;
+};
+
 export function OrderForm() {
-  const router = useRouter();
   const { user } = useTelegram();
   const { items, subtotal, deliveryFee, total, clearCart } = useCart();
 
@@ -23,6 +33,30 @@ export function OrderForm() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<SuccessState | null>(null);
+
+  // Банковские реквизиты для экрана успеха
+  const [bankSettings, setBankSettings] = useState<BankSettings | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!success) return;
+    supabase
+      .from('settings')
+      .select('key, value')
+      .in('key', ['bank_name', 'bank_account', 'bank_holder'])
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        (data ?? []).forEach((r: { key: string; value: string }) => {
+          map[r.key] = r.value;
+        });
+        setBankSettings({
+          bank_name: map.bank_name ?? '',
+          bank_account: map.bank_account ?? '',
+          bank_holder: map.bank_holder ?? '',
+        });
+      });
+  }, [success]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,32 +114,30 @@ export function OrderForm() {
 
       if (orderErr) throw orderErr;
 
-      // Уведомить бота — некритично, не блокируем успех
+      // Очищаем корзину и показываем экран успеха без навигации
+      clearCart();
+      setSuccess({ orderNumber, total });
+
+      // Уведомить бота — некритично
       const botUrl = process.env.NEXT_PUBLIC_BOT_URL;
       if (botUrl && tgId) {
-        try {
-          // Получаем id заказа по order_number
-          const { data: orderData } = await supabase
-            .from('orders')
-            .select('id')
-            .eq('order_number', orderNumber)
-            .single();
-
-          if (orderData?.id) {
-            await fetch(`${botUrl}/api/new-order`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order_id: orderData.id, tg_id: tgId }),
-            });
-          }
-        } catch {
-          // Уведомление бота не критично для оформления заказа.
-        }
+        supabase
+          .from('orders')
+          .select('id')
+          .eq('order_number', orderNumber)
+          .single()
+          .then(({ data: orderData }) => {
+            if (orderData?.id) {
+              fetch(`${botUrl}/api/new-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderData.id, tg_id: tgId }),
+              }).catch(() => {});
+            }
+          }, () => {});
       }
-
-      clearCart();
-      router.push(`/success?order=${orderNumber}&total=${total}`);
     } catch (err) {
+      console.error('[OrderForm] submit error:', JSON.stringify(err));
       const msg =
         err instanceof Error
           ? err.message
@@ -115,6 +147,78 @@ export function OrderForm() {
     }
   }
 
+  async function copyAccount() {
+    if (!bankSettings) return;
+    try {
+      await navigator.clipboard.writeText(bankSettings.bank_account);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── Экран успеха (без router.push) ──────────────────────────────────────
+  if (success) {
+    return (
+      <div className="px-0 pt-6 pb-[120px]">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#16A34A]">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="white"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h1 className="mt-5 text-2xl font-extrabold text-slate-900">Заказ принят!</h1>
+          <p className="mt-1 text-base font-bold text-[#2563EB]">№ {success.orderNumber}</p>
+          <p className="mt-1 text-base font-extrabold text-slate-900">
+            {formatPrice(success.total)}
+          </p>
+          <p className="mt-4 max-w-[300px] text-sm text-slate-600">
+            Уведомления о статусе придут в Telegram
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-2xl bg-white p-4 shadow-sm">
+          <p className="text-sm font-bold text-slate-900">💳 Оплата переводом</p>
+          {bankSettings ? (
+            <div className="mt-3 space-y-1">
+              <p className="text-sm font-semibold text-slate-700">{bankSettings.bank_name}</p>
+              <p className="text-base font-extrabold text-slate-900">{bankSettings.bank_account}</p>
+              <p className="text-sm text-slate-500">{bankSettings.bank_holder}</p>
+              <button
+                type="button"
+                onClick={copyAccount}
+                className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-[#EAB308] text-sm font-extrabold text-white shadow-sm active:scale-[0.98]"
+              >
+                {copied ? '✅ Скопировано!' : '📋 Скопировать номер счёта'}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+              <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+              <div className="h-4 w-28 animate-pulse rounded bg-slate-200" />
+            </div>
+          )}
+        </div>
+
+        <Link
+          href="/"
+          className="fixed bottom-4 left-1/2 z-10 flex h-14 w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 items-center justify-center rounded-2xl bg-[#2563EB] text-base font-extrabold text-white shadow-lg shadow-blue-200 active:scale-[0.98]"
+        >
+          ← Вернуться в меню
+        </Link>
+      </div>
+    );
+  }
+
+  // ── Форма оформления ────────────────────────────────────────────────────
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <DeliveryProgressBar subtotal={subtotal} />
@@ -149,9 +253,7 @@ export function OrderForm() {
       />
 
       <div className="space-y-2">
-        <label className="block text-sm font-bold text-slate-700">
-          Пожелания к заказу
-        </label>
+        <label className="block text-sm font-bold text-slate-700">Пожелания к заказу</label>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -164,9 +266,7 @@ export function OrderForm() {
       <CartSummary subtotal={subtotal} deliveryFee={deliveryFee} total={total} />
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
       <button

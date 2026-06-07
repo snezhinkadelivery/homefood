@@ -5,6 +5,26 @@ import { sendOrderCreatedNotification } from '../notifications/orderCreated';
 import { sendStatusNotification } from '../notifications/statusChanged';
 
 const app = express();
+
+// CORS — разрешаем запросы от TMA и CRM
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const allowed = [
+    'https://homefood-drab.vercel.app',
+    'https://homefood-crm.vercel.app',
+  ];
+  const origin = req.headers.origin ?? '';
+  if (allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-bot-secret');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Health check — без авторизации

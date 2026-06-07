@@ -61,7 +61,7 @@ export function OrderForm() {
         qty: i.quantity,
       }));
 
-      const { data: orderData, error: orderErr } = await supabase
+      const { error: orderErr } = await supabase
         .from('orders')
         .insert({
           order_number: orderNumber,
@@ -76,20 +76,28 @@ export function OrderForm() {
           delivery_fee: deliveryFee,
           total,
           status: 'accepted',
-        })
-        .select('id')
-        .single();
+        });
 
       if (orderErr) throw orderErr;
 
+      // Уведомить бота — некритично, не блокируем успех
       const botUrl = process.env.NEXT_PUBLIC_BOT_URL;
-      if (botUrl && orderData?.id && tgId) {
+      if (botUrl && tgId) {
         try {
-          await fetch(`${botUrl}/api/new-order`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderData.id, tg_id: tgId }),
-          });
+          // Получаем id заказа по order_number
+          const { data: orderData } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('order_number', orderNumber)
+            .single();
+
+          if (orderData?.id) {
+            await fetch(`${botUrl}/api/new-order`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_id: orderData.id, tg_id: tgId }),
+            });
+          }
         } catch {
           // Уведомление бота не критично для оформления заказа.
         }

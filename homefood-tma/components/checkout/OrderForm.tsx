@@ -125,6 +125,7 @@ export function OrderForm({ onOrdered }: Props) {
 
       // Уведомить бота — некритично
       const botUrl = process.env.NEXT_PUBLIC_BOT_URL;
+      const botSecret = process.env.NEXT_PUBLIC_BOT_SECRET;
       if (botUrl && tgId) {
         supabase
           .from('orders')
@@ -133,9 +134,11 @@ export function OrderForm({ onOrdered }: Props) {
           .single()
           .then(({ data: orderData }) => {
             if (orderData?.id) {
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (botSecret) headers['x-bot-secret'] = botSecret;
               fetch(`${botUrl}/api/new-order`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ order_id: orderData.id, tg_id: tgId }),
               }).catch(() => {});
             }

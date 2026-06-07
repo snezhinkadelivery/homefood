@@ -78,6 +78,7 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
       `${settings.bank_name ?? ''}\n` +
       `${settings.bank_account ?? ''} (${settings.bank_holder ?? ''})`;
 
+    // Уведомление покупателю
     await bot.telegram.sendMessage(o.user_tg_id, text, {
       reply_markup: {
         inline_keyboard: [
@@ -93,6 +94,31 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
         });
       } catch (photoErr) {
         console.error('[orderCreated] send photo error:', photoErr);
+      }
+    }
+
+    // Уведомление администраторам
+    const rawAdminIds = process.env.ADMIN_TG_IDS ?? '';
+    const adminIds = rawAdminIds.split(',').map((id) => Number(id.trim())).filter(Boolean);
+    if (adminIds.length > 0) {
+      const adminText =
+        `🔔 Новый заказ ${o.order_number}\n\n` +
+        `👤 ${o.customer_name} (tg: ${o.user_tg_id})\n` +
+        `🛒 ${(o.items_json ?? []).map((i) => `${i.name} × ${i.qty}`).join(', ')}\n` +
+        `💳 Итого: ${formatPrice(o.total)}\n` +
+        `📍 Адрес: ${o.address_text ?? 'фото'}`;
+
+      for (const adminId of adminIds) {
+        try {
+          await bot.telegram.sendMessage(adminId, adminText);
+          if (o.address_photo_url) {
+            await bot.telegram.sendPhoto(adminId, o.address_photo_url, {
+              caption: '📍 Фото адреса доставки',
+            });
+          }
+        } catch (adminErr) {
+          console.error(`[orderCreated] send to admin ${adminId} error:`, adminErr);
+        }
       }
     }
   } catch (err) {

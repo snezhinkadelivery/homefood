@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-primary: #2563EB;
+  --color-secondary: #16A34A;
+  --color-accent: #EAB308;
+  --font-sans: var(--font-nunito);
+}
+
+html, body {
+  background: #EFF6FF;
+  color: #1E293B;
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes slide-up {
+  0% { transform: translate(-50%, 120%); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop { animation: pop 0.5s ease-out; }
+
+@keyframes check {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.check-stroke {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: check 0.6s ease-out 0.2s forwards;
+}

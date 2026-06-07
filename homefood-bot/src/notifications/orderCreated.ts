@@ -11,7 +11,7 @@ type OrderItemJson = {
 type Order = {
   id: number;
   order_number: string;
-  user_tg_id: number;
+  user_tg_id: number | null;
   customer_name: string;
   address_text: string | null;
   address_photo_url: string | null;
@@ -28,6 +28,7 @@ function formatPrice(n: number): string {
 }
 
 export async function sendOrderCreatedNotification(orderId: number): Promise<void> {
+  console.log(`[orderCreated] start for order_id=${orderId}`);
   try {
     const { data: order, error: orderErr } = await supabase
       .from('orders')
@@ -41,7 +42,7 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
     }
 
     const o = order as Order;
-    if (!o.user_tg_id) return;
+    console.log(`[orderCreated] order=${o.order_number} user_tg_id=${o.user_tg_id}`);
 
     const { data: settingsData, error: settingsErr } = await supabase
       .from('settings')
@@ -58,52 +59,62 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
       settings[row.key] = row.value;
     });
 
-    const itemsList = (o.items_json ?? [])
-      .map((item) => `• ${item.name} × ${item.qty} — ${formatPrice(item.price * item.qty)}`)
-      .join('\n');
+    // Уведомление покупателю (только если есть tg_id)
+    if (o.user_tg_id) {
+      const itemsList = (o.items_json ?? [])
+        .map((item) => `• ${item.name} × ${item.qty} — ${formatPrice(item.price * item.qty)}`)
+        .join('\n');
 
-    const addressLine = o.address_text ? o.address_text : 'фото прикреплено ниже';
-    const deliveryLine = o.delivery_fee === 0 ? 'Бесплатно' : formatPrice(o.delivery_fee);
+      const addressLine = o.address_text ? o.address_text : 'фото прикреплено ниже';
+      const deliveryLine = o.delivery_fee === 0 ? 'Бесплатно' : formatPrice(o.delivery_fee);
 
-    const text =
-      `✅ Заказ ${o.order_number} принят!\n\n` +
-      `Мы уже занимаемся комплектацией вашего заказа.\n` +
-      `Как только заказ будет передан — сообщим вам.\n\n` +
-      `🛒 Ваш заказ:\n${itemsList}\n\n` +
-      `📍 Адрес: ${addressLine}\n` +
-      `💰 Сумма товаров: ${formatPrice(o.subtotal)}\n` +
-      `🚚 Доставка: ${deliveryLine}\n` +
-      `💳 Итого: ${formatPrice(o.total)}\n\n` +
-      `💳 Оплата переводом:\n` +
-      `${settings.bank_name ?? ''}\n` +
-      `${settings.bank_account ?? ''} (${settings.bank_holder ?? ''})`;
+      const text =
+        `✅ Заказ ${o.order_number} принят!\n\n` +
+        `Мы уже занимаемся комплектацией вашего заказа.\n` +
+        `Как только заказ будет передан — сообщим вам.\n\n` +
+        `🛒 Ваш заказ:\n${itemsList}\n\n` +
+        `📍 Адрес: ${addressLine}\n` +
+        `💰 Сумма товаров: ${formatPrice(o.subtotal)}\n` +
+        `🚚 Доставка: ${deliveryLine}\n` +
+        `💳 Итого: ${formatPrice(o.total)}\n\n` +
+        `💳 Оплата переводом:\n` +
+        `${settings.bank_name ?? ''}\n` +
+        `${settings.bank_account ?? ''} (${settings.bank_holder ?? ''})`;
 
-    // Уведомление покупателю
-    await bot.telegram.sendMessage(o.user_tg_id, text, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📋 Скопировать номер счёта', callback_data: `copy_account_${settings.bank_account ?? ''}` }],
-        ],
-      },
-    });
-
-    if (o.address_photo_url) {
       try {
-        await bot.telegram.sendPhoto(o.user_tg_id, o.address_photo_url, {
-          caption: '📍 Фото адреса доставки',
+        await bot.telegram.sendMessage(o.user_tg_id, text, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '📋 Скопировать номер счёта', callback_data: `copy_account_${settings.bank_account ?? ''}` }],
+            ],
+          },
         });
-      } catch (photoErr) {
-        console.error('[orderCreated] send photo error:', photoErr);
+        console.log(`[orderCreated] sent to customer ${o.user_tg_id}`);
+      } catch (customerErr) {
+        console.error('[orderCreated] send to customer error:', customerErr);
+      }
+
+      if (o.address_photo_url) {
+        try {
+          await bot.telegram.sendPhoto(o.user_tg_id, o.address_photo_url, {
+            caption: '📍 Фото адреса доставки',
+          });
+        } catch (photoErr) {
+          console.error('[orderCreated] send photo to customer error:', photoErr);
+        }
       }
     }
 
-    // Уведомление администраторам
+    // Уведомление администраторам (всегда, независимо от наличия user_tg_id)
     const rawAdminIds = process.env.ADMIN_TG_IDS ?? '';
+    console.log(`[orderCreated] ADMIN_TG_IDS="${rawAdminIds}"`);
     const adminIds = rawAdminIds.split(',').map((id) => Number(id.trim())).filter(Boolean);
+    console.log(`[orderCreated] adminIds=${JSON.stringify(adminIds)}`);
+
     if (adminIds.length > 0) {
       const adminText =
         `🔔 Новый заказ ${o.order_number}\n\n` +
-        `👤 ${o.customer_name} (tg: ${o.user_tg_id})\n` +
+        `👤 ${o.customer_name} (tg: ${o.user_tg_id ?? 'нет'})\n` +
         `🛒 ${(o.items_json ?? []).map((i) => `${i.name} × ${i.qty}`).join(', ')}\n` +
         `💳 Итого: ${formatPrice(o.total)}\n` +
         `📍 Адрес: ${o.address_text ?? 'фото'}`;
@@ -111,6 +122,7 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
       for (const adminId of adminIds) {
         try {
           await bot.telegram.sendMessage(adminId, adminText);
+          console.log(`[orderCreated] sent to admin ${adminId}`);
           if (o.address_photo_url) {
             await bot.telegram.sendPhoto(adminId, o.address_photo_url, {
               caption: '📍 Фото адреса доставки',
@@ -120,6 +132,8 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
           console.error(`[orderCreated] send to admin ${adminId} error:`, adminErr);
         }
       }
+    } else {
+      console.warn('[orderCreated] no admin IDs configured');
     }
   } catch (err) {
     console.error('[orderCreated] unexpected error:', err);

@@ -22,7 +22,11 @@ type SuccessState = {
   total: number;
 };
 
-export function OrderForm() {
+type Props = {
+  onOrdered?: () => void;
+};
+
+export function OrderForm({ onOrdered }: Props) {
   const { user } = useTelegram();
   const { items, subtotal, deliveryFee, total, clearCart } = useCart();
 
@@ -117,6 +121,7 @@ export function OrderForm() {
       // Очищаем корзину и показываем экран успеха без навигации
       clearCart();
       setSuccess({ orderNumber, total });
+      onOrdered?.();
 
       // Уведомить бота — некритично
       const botUrl = process.env.NEXT_PUBLIC_BOT_URL;

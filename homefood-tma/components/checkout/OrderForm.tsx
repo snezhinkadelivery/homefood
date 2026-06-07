@@ -98,7 +98,10 @@ export function OrderForm() {
       clearCart();
       router.push(`/success?order=${orderNumber}&total=${total}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось оформить заказ';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? JSON.stringify(err);
       setError(msg);
       setSubmitting(false);
     }

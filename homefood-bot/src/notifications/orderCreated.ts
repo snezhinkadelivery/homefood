@@ -59,6 +59,16 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
       settings[row.key] = row.value;
     });
 
+    // Получаем signed URL для фото (бакет приватный)
+    let photoSignedUrl: string | null = null;
+    if (o.address_photo_url) {
+      const { data: signedData } = await supabase.storage
+        .from('address-photos')
+        .createSignedUrl(o.address_photo_url, 3600); // 1 час
+      photoSignedUrl = signedData?.signedUrl ?? null;
+      console.log(`[orderCreated] photo signed url: ${photoSignedUrl ? 'ok' : 'failed'}`);
+    }
+
     // Уведомление покупателю (только если есть tg_id)
     if (o.user_tg_id) {
       const itemsList = (o.items_json ?? [])
@@ -94,9 +104,9 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
         console.error('[orderCreated] send to customer error:', customerErr);
       }
 
-      if (o.address_photo_url) {
+      if (photoSignedUrl) {
         try {
-          await bot.telegram.sendPhoto(o.user_tg_id, o.address_photo_url, {
+          await bot.telegram.sendPhoto(o.user_tg_id, photoSignedUrl, {
             caption: '📍 Фото адреса доставки',
           });
         } catch (photoErr) {
@@ -117,14 +127,14 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
         `👤 ${o.customer_name} (tg: ${o.user_tg_id ?? 'нет'})\n` +
         `🛒 ${(o.items_json ?? []).map((i) => `${i.name} × ${i.qty}`).join(', ')}\n` +
         `💳 Итого: ${formatPrice(o.total)}\n` +
-        `📍 Адрес: ${o.address_text ?? 'фото'}`;
+        `📍 Адрес: ${o.address_text ?? 'фото прикреплено ниже'}`;
 
       for (const adminId of adminIds) {
         try {
           await bot.telegram.sendMessage(adminId, adminText);
           console.log(`[orderCreated] sent to admin ${adminId}`);
-          if (o.address_photo_url) {
-            await bot.telegram.sendPhoto(adminId, o.address_photo_url, {
+          if (photoSignedUrl) {
+            await bot.telegram.sendPhoto(adminId, photoSignedUrl, {
               caption: '📍 Фото адреса доставки',
             });
           }

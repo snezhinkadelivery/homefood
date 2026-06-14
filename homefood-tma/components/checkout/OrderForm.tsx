@@ -375,13 +375,15 @@ export function OrderForm({ onOrdered }: Props) {
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="fixed bottom-4 left-1/2 z-10 flex h-14 w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-base font-extrabold text-white shadow-lg shadow-blue-200 active:scale-[0.98] disabled:opacity-60"
-      >
-        {submitting ? 'Оформляем…' : `Оформить заказ · ${formatPrice(total)}`}
-      </button>
+      <div className="pt-2 pb-4">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-base font-extrabold text-white shadow-lg shadow-blue-200 active:scale-[0.98] disabled:opacity-60"
+        >
+          {submitting ? 'Оформляем…' : `Оформить заказ · ${formatPrice(total)}`}
+        </button>
+      </div>
     </form>
   );
 }

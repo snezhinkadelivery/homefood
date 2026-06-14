@@ -19,14 +19,14 @@ export default function CheckoutPage() {
 
   if (!hydrated) {
     return (
-      <main className="px-4 pt-5 pb-[120px]">
+      <main className="px-4 pt-5 pb-4">
         <div className="skeleton h-20 w-full rounded-2xl" />
       </main>
     );
   }
 
   return (
-    <main className="px-4 pt-5 pb-[120px]">
+    <main className="px-4 pt-5 pb-4">
       {!ordered && (
         <header className="mb-4 flex items-center gap-3">
           <button

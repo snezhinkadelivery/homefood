@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import Script from "next/script";
 import { TelegramProvider } from "@/components/providers/TelegramProvider";
@@ -9,6 +9,13 @@ const nunito = Nunito({
   subsets: ["latin", "cyrillic"],
   weight: ["400", "600", "700", "800"],
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: "HomeFood — домашняя еда с доставкой",

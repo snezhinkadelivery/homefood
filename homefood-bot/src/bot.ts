@@ -3,6 +3,7 @@ import { Telegraf } from 'telegraf';
 import { supabase } from './lib/supabase';
 import { startHandler } from './handlers/start';
 import { adminHandler } from './handlers/admin';
+import { myOrdersHandler } from './handlers/myorders';
 
 const token = process.env.BOT_TOKEN;
 if (!token) throw new Error('BOT_TOKEN is required');
@@ -14,6 +15,9 @@ bot.command('start', startHandler);
 
 // /admin
 bot.command('admin', adminHandler);
+
+// /myorders
+bot.command('myorders', myOrdersHandler);
 
 // Оценка отзыва: review_ORDERID_RATING
 bot.action(/^review_(\d+)_([1-5])$/, async (ctx) => {

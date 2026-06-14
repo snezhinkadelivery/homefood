@@ -7,7 +7,19 @@ async function main(): Promise<void> {
   // 1. Запустить HTTP сервер
   startServer();
 
-  // 2. Установить webhook если задан WEBHOOK_URL
+  // 2. Зарегистрировать команды меню
+  try {
+    await bot.telegram.setMyCommands([
+      { command: 'start', description: 'Открыть меню' },
+      { command: 'myorders', description: 'Мои заказы' },
+      { command: 'admin', description: 'Войти в CRM' },
+    ]);
+    console.log('[bot] commands registered');
+  } catch (err) {
+    console.error('[bot] setMyCommands error:', err);
+  }
+
+  // 3. Установить webhook если задан WEBHOOK_URL
   const webhookUrl = process.env.WEBHOOK_URL;
   if (webhookUrl) {
     try {

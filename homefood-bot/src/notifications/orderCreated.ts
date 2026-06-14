@@ -131,7 +131,13 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
 
       for (const adminId of adminIds) {
         try {
-          await bot.telegram.sendMessage(adminId, adminText);
+          await bot.telegram.sendMessage(adminId, adminText, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🚚 В пути', callback_data: `status_${o.id}_on_way` }],
+              ],
+            },
+          });
           console.log(`[orderCreated] sent to admin ${adminId}`);
           if (photoSignedUrl) {
             await bot.telegram.sendPhoto(adminId, photoSignedUrl, {

@@ -50,6 +50,46 @@ bot.action(/^review_(\d+)_([1-5])$/, async (ctx) => {
   }
 });
 
+// Смена статуса заказа из уведомления: status_ORDERID_NEWSTATUS
+bot.action(/^status_(\d+)_(.+)$/, async (ctx) => {
+  const orderId = Number(ctx.match[1]);
+  const newStatus = ctx.match[2];
+
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: newStatus })
+      .eq('id', orderId);
+
+    if (error) {
+      console.error('[status callback] update error:', error);
+      await ctx.answerCbQuery('Ошибка обновления статуса');
+      return;
+    }
+
+    const { sendStatusNotification } = await import('./notifications/statusChanged');
+    await sendStatusNotification(orderId, newStatus);
+
+    if (newStatus === 'on_way') {
+      await ctx.answerCbQuery('Статус: В пути');
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: [
+          [{ text: '📦 Доставлен', callback_data: `status_${orderId}_completed` }],
+        ],
+      });
+    } else if (newStatus === 'completed') {
+      await ctx.answerCbQuery('Статус: Доставлен');
+      await ctx.editMessageReplyMarkup(undefined);
+    } else {
+      await ctx.answerCbQuery('Статус обновлён');
+      await ctx.editMessageReplyMarkup(undefined);
+    }
+  } catch (err) {
+    console.error('[status callback] unexpected error:', err);
+    try { await ctx.answerCbQuery('Ошибка'); } catch {}
+  }
+});
+
 // Копирование номера счёта: copy_account_НОМЕР
 bot.action(/^copy_account_(.+)$/, async (ctx) => {
   const account = ctx.match[1];

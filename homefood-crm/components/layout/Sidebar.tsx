@@ -9,6 +9,7 @@ const NAV = [
   { href: '/orders', icon: '📦', label: 'Заказы' },
   { href: '/catalog', icon: '🍽️', label: 'Каталог' },
   { href: '/reviews', icon: '⭐', label: 'Отзывы' },
+  { href: '/promo', icon: '🎟️', label: 'Промокоды' },
   { href: '/settings', icon: '⚙️', label: 'Настройки' },
 ];
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, FREE_DELIVERY_MIN, DELIVERY_FEE } from '@/lib/supabase';
 import { useCart } from '@/hooks/useCart';
 import { useTelegram } from '@/hooks/useTelegram';
 import { formatPrice, generateOrderNumber } from '@/lib/utils';
@@ -28,7 +28,7 @@ type Props = {
 
 export function OrderForm({ onOrdered }: Props) {
   const { user } = useTelegram();
-  const { items, subtotal, deliveryFee, total, clearCart } = useCart();
+  const { items, subtotal, clearCart } = useCart();
 
   const [customerName, setCustomerName] = useState(user?.first_name ?? '');
   const [phone, setPhone] = useState('');
@@ -38,6 +38,17 @@ export function OrderForm({ onOrdered }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
+
+  // Промокод
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
+
+  // Пересчёт с учётом скидки
+  const discountedSubtotal = subtotal - discountAmount;
+  const deliveryFee = discountedSubtotal >= FREE_DELIVERY_MIN || discountedSubtotal === 0 ? 0 : DELIVERY_FEE;
+  const total = discountedSubtotal + deliveryFee;
 
   // Банковские реквизиты для экрана успеха
   const [bankSettings, setBankSettings] = useState<BankSettings | null>(null);
@@ -61,6 +72,37 @@ export function OrderForm({ onOrdered }: Props) {
         });
       });
   }, [success]);
+
+  async function applyPromoCode() {
+    if (!promoCode.trim()) return;
+    setPromoStatus('loading');
+
+    const { data, error: err } = await supabase
+      .from('promo_codes')
+      .select('code, discount_percent, is_active')
+      .eq('code', promoCode.trim().toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (err || !data) {
+      setPromoStatus('invalid');
+      setDiscountAmount(0);
+      setAppliedPromoCode(null);
+      return;
+    }
+
+    const discount = Math.floor(subtotal * data.discount_percent / 100);
+    setDiscountAmount(discount);
+    setAppliedPromoCode(data.code);
+    setPromoStatus('valid');
+  }
+
+  function removePromoCode() {
+    setPromoCode('');
+    setPromoStatus('idle');
+    setDiscountAmount(0);
+    setAppliedPromoCode(null);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,11 +156,17 @@ export function OrderForm({ onOrdered }: Props) {
           delivery_fee: deliveryFee,
           total,
           status: 'accepted',
+          promo_code: appliedPromoCode,
+          discount_amount: discountAmount,
         });
 
       if (orderErr) throw orderErr;
 
-      // Очищаем корзину и показываем экран успеха без навигации
+      // Инкрементировать счётчик использований
+      if (appliedPromoCode) {
+        supabase.rpc('increment_promo_usage', { promo_code_value: appliedPromoCode }).then(() => {}, () => {});
+      }
+
       clearCart();
       setSuccess({ orderNumber, total });
       onOrdered?.();
@@ -229,7 +277,7 @@ export function OrderForm({ onOrdered }: Props) {
   // ── Форма оформления ────────────────────────────────────────────────────
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <DeliveryProgressBar subtotal={subtotal} />
+      <DeliveryProgressBar subtotal={discountedSubtotal} />
 
       <div className="space-y-2">
         <label className="block text-sm font-bold text-slate-700">Имя *</label>
@@ -260,6 +308,51 @@ export function OrderForm({ onOrdered }: Props) {
         onPhotoChange={setAddressPhotoUrl}
       />
 
+      {/* Промокод */}
+      <div className="space-y-2">
+        <label className="block text-sm font-bold text-slate-700">Промокод</label>
+        {promoStatus !== 'valid' ? (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => {
+                setPromoCode(e.target.value.toUpperCase());
+                if (promoStatus === 'invalid') setPromoStatus('idle');
+              }}
+              placeholder="Введите промокод"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-mono uppercase focus:border-[#2563EB] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={applyPromoCode}
+              disabled={promoStatus === 'loading' || !promoCode.trim()}
+              className="rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+            >
+              {promoStatus === 'loading' ? '...' : 'Применить'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between rounded-xl border border-[#16A34A] bg-[#DCFCE7] px-4 py-3">
+            <span className="text-sm font-semibold text-[#166534]">
+              ✅ Скидка применена! −{formatPrice(discountAmount)}
+            </span>
+            <button
+              type="button"
+              onClick={removePromoCode}
+              className="ml-2 text-lg text-[#166534] hover:text-[#14532D]"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {promoStatus === 'invalid' && (
+          <p className="rounded-xl border border-[#DC2626] bg-[#FEE2E2] px-4 py-2 text-sm text-[#991B1B]">
+            ❌ Промокод не найден или недействителен
+          </p>
+        )}
+      </div>
+
       <div className="space-y-2">
         <label className="block text-sm font-bold text-slate-700">Пожелания к заказу</label>
         <textarea
@@ -271,7 +364,12 @@ export function OrderForm({ onOrdered }: Props) {
         />
       </div>
 
-      <CartSummary subtotal={subtotal} deliveryFee={deliveryFee} total={total} />
+      <CartSummary
+        subtotal={subtotal}
+        discountAmount={discountAmount}
+        deliveryFee={deliveryFee}
+        total={total}
+      />
 
       {error && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>

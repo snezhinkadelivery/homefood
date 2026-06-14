@@ -67,6 +67,11 @@ bot.action(/^status_(\d+)_(.+)$/, async (ctx) => {
       return;
     }
 
+    await supabase
+      .from('order_status_history')
+      .insert({ order_id: orderId, status: newStatus })
+      .then(() => {}, (e) => console.error('[status callback] history insert error:', e));
+
     const { sendStatusNotification } = await import('./notifications/statusChanged');
     await sendStatusNotification(orderId, newStatus);
 

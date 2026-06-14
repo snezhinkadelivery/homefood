@@ -87,9 +87,8 @@ export default function HomePage() {
       {hydrated && totalItems > 0 && (
         <Link
           href="/cart"
-          className="animate-slide-up fixed bottom-0 left-1/2 z-10 flex h-14 w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 items-center justify-between rounded-2xl px-5 text-white transition active:scale-[0.98]"
+          className="animate-slide-up fixed bottom-4 left-0 right-0 z-10 mx-auto flex h-14 w-[calc(100%-2rem)] max-w-[398px] items-center justify-between rounded-2xl px-5 text-white active:scale-[0.98]"
           style={{
-            bottom: '16px',
             background: 'linear-gradient(90deg, #2563EB 0%, #1D4ED8 100%)',
             boxShadow: '0 8px 24px rgba(37, 99, 235, 0.4)',
           }}

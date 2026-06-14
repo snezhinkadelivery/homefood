@@ -29,11 +29,13 @@ html, body {
 }
 
 @keyframes slide-up {
-  0% { transform: translate(-50%, 120%); opacity: 0; }
-  100% { transform: translate(-50%, 0); opacity: 1; }
+  0% { transform: translateY(100%); opacity: 0; }
+  60% { transform: translateY(-6%); opacity: 1; }
+  80% { transform: translateY(2%); }
+  100% { transform: translateY(0); }
 }
 .animate-slide-up {
-  animation: slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .skeleton {

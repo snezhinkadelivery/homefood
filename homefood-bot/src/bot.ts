@@ -26,16 +26,26 @@ bot.action(/^review_(\d+)_([1-5])$/, async (ctx) => {
   const rating = Number(match[2]);
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('reviews')
       .update({
         rating,
         submitted_at: new Date().toISOString(),
       })
-      .eq('order_id', orderId);
+      .eq('order_id', orderId)
+      .is('submitted_at', null)
+      .select();
 
     if (error) {
       console.error('[review callback] update error:', error);
+      await ctx.answerCbQuery('Ошибка сохранения');
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      await ctx.answerCbQuery('Вы уже оценили этот заказ');
+      try { await ctx.editMessageReplyMarkup(undefined); } catch {}
+      return;
     }
   } catch (err) {
     console.error('[review callback] unexpected error:', err);

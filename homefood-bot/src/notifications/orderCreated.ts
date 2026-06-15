@@ -44,6 +44,21 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
     const o = order as Order;
     console.log(`[orderCreated] order=${o.order_number} user_tg_id=${o.user_tg_id}`);
 
+    // Резервируем запись в reviews — чтобы cron мог атомарно её обновлять
+    const { error: reviewInsertErr } = await supabase
+      .from('reviews')
+      .insert({
+        order_id: o.id,
+        user_tg_id: o.user_tg_id,
+        requested_at: null,
+        reminded_at: null,
+        submitted_at: null,
+        rating: null,
+      });
+    if (reviewInsertErr) {
+      console.error('[orderCreated] reserve review row error:', reviewInsertErr);
+    }
+
     const { data: settingsData, error: settingsErr } = await supabase
       .from('settings')
       .select('key, value')

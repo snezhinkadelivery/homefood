@@ -1,5 +1,6 @@
 import type { Context } from 'telegraf';
 import jwt from 'jsonwebtoken';
+import { createHash } from 'crypto';
 
 export async function adminHandler(ctx: Context): Promise<void> {
   const from = ctx.from;
@@ -15,6 +16,9 @@ export async function adminHandler(ctx: Context): Promise<void> {
     await ctx.reply('❌ Сервер не настроен. Свяжитесь с админом.');
     return;
   }
+
+  const hash = createHash('sha256').update(secret).digest('hex').slice(0, 12);
+  console.log(`[admin] signing JWT, secret length=${secret.length} sha256[:12]=${hash} for tg_id=${from.id}`);
 
   const token = jwt.sign(
     { tg_id: from.id, name: from.first_name ?? '' },

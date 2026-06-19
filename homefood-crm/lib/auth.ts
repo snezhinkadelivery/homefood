@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { createHash } from 'crypto';
 
 export const COOKIE_NAME = 'crm_token';
 export const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 дней
@@ -18,7 +19,8 @@ export function verifyToken(token: string): JwtPayload | null {
     console.error('[auth] JWT_SECRET not set in env');
     return null;
   }
-  console.error(`[auth] JWT_SECRET length=${secret.length}`);
+  const hash = createHash('sha256').update(secret).digest('hex').slice(0, 12);
+  console.error(`[auth] JWT_SECRET length=${secret.length} sha256[:12]=${hash}`);
   try {
     const payload = jwt.verify(token, secret) as JwtPayload;
     console.error(`[auth] jwt verified, tg_id=${payload.tg_id}`);

@@ -25,10 +25,10 @@ function LoginContent() {
         const data = (await res.json()) as { success: boolean; error?: string };
         if (data.success) {
           setState('success');
-          router.replace('/');
+          setTimeout(() => router.replace('/'), 1000);
         } else {
           setState('error');
-          setError('Ссылка недействительна или устарела');
+          setError('Ссылка устарела. Запросите новую через /admin в боте.');
         }
       } catch {
         setState('error');

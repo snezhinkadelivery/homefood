@@ -1,22 +1,27 @@
-import { supabaseAdmin } from './supabase-admin';
+import jwt from 'jsonwebtoken';
 
 export const COOKIE_NAME = 'crm_token';
-export const COOKIE_MAX_AGE = 60 * 60 * 8; // 8 часов
+export const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 дней
 
-export async function validateToken(token: string): Promise<boolean> {
-  if (!token) return false;
+export type JwtPayload = {
+  tg_id: number;
+  name?: string;
+};
+
+export function verifyToken(token: string): JwtPayload | null {
+  if (!token) return null;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.error('[auth] JWT_SECRET not set');
+    return null;
+  }
   try {
-    const { data, error } = await supabaseAdmin
-      .from('admin_tokens')
-      .select('expires_at, used')
-      .eq('token', token)
-      .maybeSingle();
-
-    if (error || !data) return false;
-    if (data.used) return false;
-    if (new Date(data.expires_at).getTime() < Date.now()) return false;
-    return true;
+    const payload = jwt.verify(token, secret) as JwtPayload;
+    const rawIds = process.env.ADMIN_TG_IDS ?? '';
+    const adminIds = rawIds.split(',').map((id) => Number(id.trim())).filter(Boolean);
+    if (!adminIds.includes(payload.tg_id)) return null;
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }

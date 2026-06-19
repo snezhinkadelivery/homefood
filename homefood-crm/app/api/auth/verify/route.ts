@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { COOKIE_NAME, COOKIE_MAX_AGE, validateToken } from '@/lib/auth';
+import { COOKIE_NAME, COOKIE_MAX_AGE, verifyToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -10,12 +10,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'token required' }, { status: 400 });
     }
 
-    const valid = await validateToken(token);
-    if (!valid) {
-      return NextResponse.json({ success: false, error: 'invalid token' }, { status: 401 });
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: 'invalid or expired token' },
+        { status: 401 },
+      );
     }
 
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true, name: payload.name });
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: 'lax',

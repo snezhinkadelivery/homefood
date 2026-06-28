@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import { startHandler } from './handlers/start';
 import { adminHandler } from './handlers/admin';
 import { myOrdersHandler } from './handlers/myorders';
+import { getAdminStatusKeyboard, syncAdminOrderMessages } from './notifications/adminOrderMessages';
 
 const token = process.env.BOT_TOKEN;
 if (!token) throw new Error('BOT_TOKEN is required');
@@ -63,12 +64,49 @@ bot.action(/^review_(\d+)_([1-5])$/, async (ctx) => {
 // Смена статуса заказа из уведомления: status_ORDERID_NEWSTATUS
 bot.action(/^status_(\d+)_(.+)$/, async (ctx) => {
   const orderId = Number(ctx.match[1]);
-  const newStatus = ctx.match[2];
+  const newStatus = ctx.match[2] as 'on_way' | 'completed';
+  const callbackMessage =
+    ctx.callbackQuery && 'message' in ctx.callbackQuery ? ctx.callbackQuery.message : undefined;
+  const currentAdminMessage = callbackMessage
+    ? { chatId: callbackMessage.chat.id, messageId: callbackMessage.message_id }
+    : undefined;
+
+  async function editCurrentAdminKeyboard(status: 'accepted' | 'on_way' | 'completed'): Promise<void> {
+    try {
+      await ctx.editMessageReplyMarkup(getAdminStatusKeyboard(orderId, status));
+    } catch (err) {
+      console.error('[status callback] current message edit error:', err);
+    }
+  }
 
   try {
+    const { data: order, error: orderErr } = await supabase
+      .from('orders')
+      .select('status')
+      .eq('id', orderId)
+      .single();
+
+    if (orderErr || !order) {
+      console.error('[status callback] fetch order error:', orderErr);
+      await ctx.answerCbQuery('Заказ не найден');
+      return;
+    }
+
+    const currentStatus = order.status as 'accepted' | 'on_way' | 'completed';
+    const isAllowedTransition =
+      (currentStatus === 'accepted' && newStatus === 'on_way') ||
+      (currentStatus === 'on_way' && newStatus === 'completed');
+
+    if (currentStatus === newStatus || !isAllowedTransition) {
+      await editCurrentAdminKeyboard(currentStatus);
+      await syncAdminOrderMessages(orderId, currentStatus, bot.telegram, currentAdminMessage);
+      await ctx.answerCbQuery('Статус уже изменён');
+      return;
+    }
+
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', orderId);
 
     if (error) {
@@ -84,20 +122,15 @@ bot.action(/^status_(\d+)_(.+)$/, async (ctx) => {
 
     const { sendStatusNotification } = await import('./notifications/statusChanged');
     await sendStatusNotification(orderId, newStatus);
+    await editCurrentAdminKeyboard(newStatus);
+    await syncAdminOrderMessages(orderId, newStatus, bot.telegram, currentAdminMessage);
 
     if (newStatus === 'on_way') {
       await ctx.answerCbQuery('Статус: В пути');
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: [
-          [{ text: '📦 Доставлен', callback_data: `status_${orderId}_completed` }],
-        ],
-      });
     } else if (newStatus === 'completed') {
       await ctx.answerCbQuery('Статус: Доставлен');
-      await ctx.editMessageReplyMarkup(undefined);
     } else {
       await ctx.answerCbQuery('Статус обновлён');
-      await ctx.editMessageReplyMarkup(undefined);
     }
   } catch (err) {
     console.error('[status callback] unexpected error:', err);

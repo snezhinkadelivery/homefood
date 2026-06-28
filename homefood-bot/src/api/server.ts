@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { bot } from '../bot';
 import { sendOrderCreatedNotification } from '../notifications/orderCreated';
 import { sendStatusNotification } from '../notifications/statusChanged';
+import { syncAdminOrderMessages } from '../notifications/adminOrderMessages';
 
 const app = express();
 
@@ -72,13 +73,19 @@ app.post('/api/new-order', async (req: Request, res: Response) => {
 
 // Уведомление о смене статуса
 app.post('/api/status-changed', async (req: Request, res: Response) => {
-  const { order_id, status } = req.body as { order_id: number; status: string };
-  if (!order_id || !status) {
+  const { order_id, status: rawStatus } = req.body as { order_id: number; status: string };
+  if (!order_id || !rawStatus) {
     res.status(400).json({ error: 'order_id and status are required' });
     return;
   }
+  if (!['accepted', 'on_way', 'completed'].includes(rawStatus)) {
+    res.status(400).json({ error: 'invalid status' });
+    return;
+  }
+  const status = rawStatus as 'accepted' | 'on_way' | 'completed';
   try {
     await sendStatusNotification(order_id, status);
+    await syncAdminOrderMessages(order_id, status, bot.telegram);
     res.json({ success: true });
   } catch (err) {
     console.error('[/api/status-changed] error:', err);

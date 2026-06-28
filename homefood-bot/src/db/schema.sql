@@ -82,6 +82,15 @@ CREATE TABLE order_status_history (
   changed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE admin_order_messages (
+  order_id    INT REFERENCES orders(id) ON DELETE CASCADE,
+  admin_tg_id BIGINT NOT NULL,
+  message_id  INT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (order_id, admin_tg_id)
+);
+
 CREATE TABLE reviews (
   id           SERIAL PRIMARY KEY,
   order_id     INT REFERENCES orders(id),
@@ -206,6 +215,7 @@ ALTER TABLE menu_items           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_status_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_order_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_tokens         ENABLE ROW LEVEL SECURITY;
@@ -269,6 +279,10 @@ CREATE POLICY "service_role_all_reviews"
 
 CREATE POLICY "service_role_all_order_status_history"
   ON order_status_history FOR ALL TO service_role
+  USING (TRUE) WITH CHECK (TRUE);
+
+CREATE POLICY "service_role_all_admin_order_messages"
+  ON admin_order_messages FOR ALL TO service_role
   USING (TRUE) WITH CHECK (TRUE);
 
 CREATE POLICY "service_role_all_admin_tokens"

@@ -1,5 +1,6 @@
 import { bot } from '../bot';
 import { supabase } from '../lib/supabase';
+import { getAdminStatusKeyboard, storeAdminOrderMessage } from './adminOrderMessages';
 
 type OrderItemJson = {
   id: number;
@@ -146,13 +147,10 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
 
       for (const adminId of adminIds) {
         try {
-          await bot.telegram.sendMessage(adminId, adminText, {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🚚 В пути', callback_data: `status_${o.id}_on_way` }],
-              ],
-            },
+          const sent = await bot.telegram.sendMessage(adminId, adminText, {
+            reply_markup: getAdminStatusKeyboard(o.id, 'accepted'),
           });
+          await storeAdminOrderMessage(o.id, adminId, sent.message_id);
           console.log(`[orderCreated] sent to admin ${adminId}`);
           if (photoSignedUrl) {
             await bot.telegram.sendPhoto(adminId, photoSignedUrl, {

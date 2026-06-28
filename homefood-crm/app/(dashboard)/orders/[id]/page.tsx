@@ -26,6 +26,7 @@ export default async function OrderDetailsPage({
 
   if (error || !data) notFound();
   const order = data as Order;
+  const addressPhotoUrl = await getAddressPhotoUrl(order.address_photo_url);
 
   return (
     <div className="space-y-6">
@@ -59,14 +60,18 @@ export default async function OrderDetailsPage({
           {order.address_photo_url && (
             <div className="mb-3">
               <p className="text-xs uppercase tracking-wide text-[#64748B]">Фото адреса</p>
-              <a
-                href={order.address_photo_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 inline-block text-sm font-medium text-[#2563EB] hover:underline"
-              >
-                Открыть фото →
-              </a>
+              {addressPhotoUrl ? (
+                <a
+                  href={addressPhotoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-sm font-medium text-[#2563EB] hover:underline"
+                >
+                  Открыть фото →
+                </a>
+              ) : (
+                <p className="mt-1 text-sm text-red-600">Фото недоступно</p>
+              )}
             </div>
           )}
           {order.comment && (
@@ -131,6 +136,22 @@ export default async function OrderDetailsPage({
       <ToastViewport />
     </div>
   );
+}
+
+async function getAddressPhotoUrl(filePath: string | null): Promise<string | null> {
+  if (!filePath) return null;
+  if (/^https?:\/\//.test(filePath)) return filePath;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from('address-photos')
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error) {
+    console.error('[orders] address photo signed url error:', error);
+    return null;
+  }
+
+  return data.signedUrl;
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

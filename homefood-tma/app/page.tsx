@@ -8,6 +8,8 @@ import { Header } from '@/components/catalog/Header';
 import { CatalogTabs } from '@/components/catalog/CatalogTabs';
 import { CategoryFilter } from '@/components/catalog/CategoryFilter';
 import { MenuItemCard } from '@/components/catalog/MenuItemCard';
+import { ComingSoonPanel } from '@/components/catalog/ComingSoonPanel';
+import { EmptyCategoryState } from '@/components/catalog/EmptyCategoryState';
 import { formatPrice } from '@/lib/utils';
 
 export default function HomePage() {
@@ -18,10 +20,24 @@ export default function HomePage() {
 
   useEffect(() => {
     if (activeType === null && catalogTypes.length > 0) {
-      const firstActive = catalogTypes.find((t) => t.is_active);
+      const firstActive = catalogTypes.find((t) => t.status === 'active');
+      const firstVisible = catalogTypes.find(
+        (t) => t.status === 'active' || t.status === 'coming_soon',
+      );
       if (firstActive) setActiveType(firstActive.id);
+      else if (firstVisible) setActiveType(firstVisible.id);
     }
   }, [catalogTypes, activeType]);
+
+  const selectedType = useMemo(
+    () => catalogTypes.find((t) => t.id === activeType) ?? null,
+    [catalogTypes, activeType],
+  );
+
+  const firstActiveType = useMemo(
+    () => catalogTypes.find((t) => t.status === 'active') ?? null,
+    [catalogTypes],
+  );
 
   useEffect(() => {
     setActiveCategory('all');
@@ -33,12 +49,25 @@ export default function HomePage() {
   );
 
   const visibleItems = useMemo(() => {
+    const categoryOrder = new Map(visibleCategories.map((c) => [c.id, c.sort_order]));
     const inType = items.filter((i) =>
       visibleCategories.some((c) => c.id === i.category_id),
-    );
+    ).sort((a, b) => {
+      const categoryDiff =
+        (categoryOrder.get(a.category_id) ?? 0) - (categoryOrder.get(b.category_id) ?? 0);
+      if (categoryDiff !== 0) return categoryDiff;
+      return a.sort_order - b.sort_order;
+    });
     if (activeCategory === 'all') return inType;
     return inType.filter((i) => i.category_id === activeCategory);
   }, [items, visibleCategories, activeCategory]);
+
+  const activeCategoryName = useMemo(() => {
+    if (activeCategory === 'all') return undefined;
+    return visibleCategories.find((c) => c.id === activeCategory)?.name;
+  }, [activeCategory, visibleCategories]);
+
+  const isComingSoon = selectedType?.status === 'coming_soon';
 
   return (
     <main className="min-h-screen bg-[#EFF6FF] pb-[110px]">
@@ -50,13 +79,19 @@ export default function HomePage() {
         onChange={setActiveType}
       />
 
-      <CategoryFilter
-        categories={visibleCategories}
-        activeId={activeCategory}
-        onChange={setActiveCategory}
-      />
+      {!isComingSoon && (
+        <CategoryFilter
+          categories={visibleCategories}
+          activeId={activeCategory}
+          onChange={setActiveCategory}
+        />
+      )}
 
-      <section className="flex flex-wrap justify-center gap-4 p-4">
+      <section
+        className={`flex flex-wrap justify-center py-4 ${
+          selectedType?.slug === 'frozen' ? 'gap-2 px-2' : 'gap-4 px-4'
+        }`}
+      >
         {loading &&
           Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -72,15 +107,26 @@ export default function HomePage() {
           </div>
         )}
 
-        {!loading && !error && visibleItems.length === 0 && (
-          <div className="w-full rounded-[20px] bg-white p-6 text-center text-sm text-[#64748B] shadow-sm">
-            В этой категории пока нет блюд.
-          </div>
+        {!loading && !error && isComingSoon && (
+          <ComingSoonPanel
+            onOpenActive={() => {
+              if (firstActiveType) setActiveType(firstActiveType.id);
+            }}
+          />
         )}
 
-        {!loading &&
+        {!loading && !error && !isComingSoon && visibleItems.length === 0 && (
+          <EmptyCategoryState categoryName={activeCategoryName} />
+        )}
+
+        {!loading && !isComingSoon &&
           visibleItems.map((item, idx) => (
-            <MenuItemCard key={item.id} item={item} priority={idx < 4} />
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              priority={idx < 4}
+              catalogSlug={selectedType?.slug}
+            />
           ))}
       </section>
 

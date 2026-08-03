@@ -25,6 +25,7 @@ CREATE TABLE catalog_types (
   slug       TEXT UNIQUE NOT NULL,
   name       TEXT NOT NULL,
   is_active  BOOLEAN DEFAULT FALSE,
+  status     TEXT NOT NULL DEFAULT 'hidden' CHECK (status IN ('active', 'coming_soon', 'hidden')),
   sort_order INT DEFAULT 0
 );
 
@@ -137,10 +138,10 @@ CREATE TRIGGER orders_updated_at
 -- =============================================================
 
 -- Типы каталога
-INSERT INTO catalog_types (slug, name, is_active, sort_order) VALUES
-  ('retort', 'Реторт',        TRUE,  1),
-  ('frozen', 'Заморозка',     FALSE, 2),
-  ('semi',   'Полуфабрикаты', FALSE, 3);
+INSERT INTO catalog_types (slug, name, is_active, status, sort_order) VALUES
+  ('retort', 'Реторт',        FALSE, 'coming_soon', 1),
+  ('frozen', 'Заморозка',     TRUE,  'active',      2),
+  ('semi',   'Полуфабрикаты', FALSE, 'hidden',      3);
 
 -- Категории: 3 типа × 3 категории = 9 строк
 INSERT INTO categories (catalog_type_id, slug, name, sort_order) VALUES
@@ -159,20 +160,41 @@ INSERT INTO categories (catalog_type_id, slug, name, sort_order) VALUES
 
 -- Активные блюда — Первые блюда Реторт (category_id = 1)
 INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES
-  (1, 'Борщ',         10000, 'borsh.jpeg',         TRUE, 1),
-  (1, 'Солянка',      10000, 'solyanka.jpeg',       TRUE, 2),
-  (1, 'Харчо',        10000, 'harcho.jpeg',         TRUE, 3),
-  (1, 'Шурпа',        10000, 'shurpa.jpeg',         TRUE, 4),
-  (1, 'Пуктяй',        8000, 'pyktyai.jpeg',        TRUE, 5),
-  (1, 'Сиряктямури',   8000, 'siryaktyamuri.jpeg',  TRUE, 6);
+  (1, 'Борщ',         10000, 'retort/borsh.jpeg',         TRUE, 1),
+  (1, 'Солянка',      10000, 'retort/solyanka.jpeg',       TRUE, 2),
+  (1, 'Харчо',        10000, 'retort/harcho.jpeg',         TRUE, 3),
+  (1, 'Шурпа',        10000, 'retort/shurpa.jpeg',         TRUE, 4),
+  (1, 'Пуктяй',        8000, 'retort/pyktyai.jpeg',        TRUE, 5),
+  (1, 'Сиряктямури',   8000, 'retort/siryaktyamuri.jpeg',  TRUE, 6);
 
 -- Активные блюда — Вторые блюда Реторт (category_id = 2)
 INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES
-  (2, 'Бефстроганов',              10000, 'befstroganov.jpeg',         TRUE, 1),
-  (2, 'Плов домашний',             10000, 'plov.jpeg',                 TRUE, 2),
-  (2, 'Гуляш из говядины',         10000, 'gylyash.jpeg',              TRUE, 3),
-  (2, 'Говядина с овощами',        10000, 'govyadina_s_ovoshami.jpeg', TRUE, 4),
-  (2, 'Тефтели в томатном соусе',  10000, 'tefteli.jpeg',              TRUE, 5);
+  (2, 'Бефстроганов',              10000, 'retort/befstroganov.jpeg',         TRUE, 1),
+  (2, 'Плов домашний',             10000, 'retort/plov.jpeg',                 TRUE, 2),
+  (2, 'Гуляш из говядины',         10000, 'retort/gylyash.jpeg',              TRUE, 3),
+  (2, 'Говядина с овощами',        10000, 'retort/govyadina_s_ovoshami.jpeg', TRUE, 4),
+  (2, 'Тефтели в томатном соусе',  10000, 'retort/tefteli.jpeg',              TRUE, 5);
+
+-- Активные блюда — Первые блюда Заморозка (category_id = 4)
+INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES
+  (4, 'Шурпа',             9000, 'frozen/shurpa.jpeg',           TRUE, 1),
+  (4, 'Борщ домашний',     9000, 'frozen/borsh-domashniy.jpeg',  TRUE, 2),
+  (4, 'Харчо',             9000, 'frozen/harcho.jpeg',           TRUE, 3),
+  (4, 'Сиряктямури',       9000, 'frozen/siryaktyamuri.jpeg',    TRUE, 4),
+  (4, 'Грибной крем-суп',  9000, 'frozen/gribnoy-krem-sup.jpeg', TRUE, 5);
+
+-- Активные блюда — Вторые блюда Заморозка (category_id = 5)
+INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES
+  (5, 'Бефстроганов с гречневой кашей',    10000, 'frozen/befstroganov-grechka.jpeg', TRUE,  1),
+  (5, 'Бефстроганов с рисом',              10000, 'frozen/befstroganov-ris.jpeg',     TRUE,  2),
+  (5, 'Бефстроганов с картофельным пюре',  10000, 'frozen/befstroganov-pyure.jpeg',   TRUE,  3),
+  (5, 'Плов',                              10000, 'frozen/plov.jpeg',                 TRUE,  4),
+  (5, 'Котлеты с картофельным пюре',       10000, 'frozen/kotlety-pyure.jpeg',        TRUE,  5),
+  (5, 'Котлеты с рисом',                   10000, 'frozen/kotlety-ris.jpeg',          TRUE,  6),
+  (5, 'Котлеты с гречневой кашей',         10000, 'frozen/kotlety-grechka.jpeg',      TRUE,  7),
+  (5, 'Гуляш с рисом',                     10000, 'frozen/gulyash-ris.jpeg',          TRUE,  8),
+  (5, 'Гуляш с картофельным пюре',         10000, 'frozen/gulyash-pyure.jpeg',        TRUE,  9),
+  (5, 'Гуляш с гречневой кашей',           10000, 'frozen/gulyash-grechka.jpeg',      TRUE, 10);
 
 -- Неактивные — Первые блюда (category_id = 1)
 INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES
@@ -227,7 +249,7 @@ ALTER TABLE admin_tokens         ENABLE ROW LEVEL SECURITY;
 -- catalog_types
 CREATE POLICY "anon_select_catalog_types"
   ON catalog_types FOR SELECT TO anon
-  USING (is_active = TRUE);
+  USING (status IN ('active', 'coming_soon'));
 
 -- categories
 CREATE POLICY "anon_select_categories"

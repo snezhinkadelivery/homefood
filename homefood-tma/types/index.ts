@@ -3,6 +3,7 @@ export type CatalogType = {
   slug: string;
   name: string;
   is_active: boolean;
+  status: 'active' | 'coming_soon' | 'hidden';
   sort_order: number;
 };
 

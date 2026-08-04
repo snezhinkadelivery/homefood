@@ -14,11 +14,24 @@ type Props = {
 
 export function CartItem({ item, onIncrement, onDecrement, onRemove }: Props) {
   const imageUrl = getMenuImageUrl(item.image_url);
+  const frozenLayout = item.image_url?.startsWith('frozen/');
+
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm">
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100">
+      <div
+        className={`relative shrink-0 overflow-hidden bg-slate-100 ${
+          frozenLayout ? 'h-[76px] w-[112px] rounded-xl ring-1 ring-slate-100' : 'h-16 w-16 rounded-full'
+        }`}
+      >
         {imageUrl ? (
-          <Image src={imageUrl} alt={item.name} fill sizes="64px" className="object-cover" unoptimized />
+          <Image
+            src={imageUrl}
+            alt={item.name}
+            fill
+            sizes={frozenLayout ? '112px' : '64px'}
+            className={frozenLayout ? 'object-contain' : 'object-cover'}
+            unoptimized
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-300">🍽️</div>
         )}

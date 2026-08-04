@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { CatalogStatusSelect } from '@/components/catalog/CatalogStatusSelect';
 import { MenuItemToggle } from '@/components/catalog/MenuItemToggle';
 import { ToastViewport } from '@/components/ui/Toast';
 import type { CatalogType, Category, MenuItem } from '@/types';
@@ -77,11 +78,14 @@ export default async function CatalogPage() {
                 </div>
                 <p className="mt-1 text-sm text-[#64748B]">{status.description}</p>
               </div>
-              <div className="rounded-xl bg-[#F8FAFC] px-3 py-2 text-right">
-                <p className="text-xs font-medium text-[#64748B]">Позиции</p>
-                <p className="text-sm font-extrabold text-[#1E293B]">
-                  {activeCount} / {typeItems.length}
-                </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <CatalogStatusSelect catalogType={type} />
+                <div className="rounded-xl bg-[#F8FAFC] px-3 py-2 text-right">
+                  <p className="text-xs font-medium text-[#64748B]">Позиции</p>
+                  <p className="text-sm font-extrabold text-[#1E293B]">
+                    {activeCount} / {typeItems.length}
+                  </p>
+                </div>
               </div>
             </div>
 

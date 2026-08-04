@@ -1,13 +1,16 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from '@/components/ui/Toast';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getMenuImageUrl } from '@/lib/utils';
 import type { MenuItem } from '@/types';
 
 export function MenuItemToggle({ item }: { item: MenuItem }) {
   const [active, setActive] = useState(item.is_active);
   const [saving, setSaving] = useState(false);
+  const imageUrl = getMenuImageUrl(item.image_url);
+  const frozenLayout = item.image_url?.startsWith('frozen/');
 
   async function onToggle() {
     if (saving) return;
@@ -36,16 +39,32 @@ export function MenuItemToggle({ item }: { item: MenuItem }) {
         (active ? '' : 'opacity-60')
       }
     >
-      <div className="flex items-center gap-3">
-        {item.image_url ? (
-          <div className="h-10 w-10 rounded-lg bg-[#F1F5F9]" />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1F5F9] text-[#94A3B8]">
-            🖼️
-          </div>
-        )}
-        <div>
-          <p className="text-sm font-medium text-[#1E293B]">{item.name}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className={
+            'relative shrink-0 overflow-hidden rounded-lg bg-[#F1F5F9] ring-1 ring-[#E2E8F0] ' +
+            (frozenLayout ? 'h-14 w-24' : 'h-12 w-12')
+          }
+        >
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={item.name}
+              fill
+              sizes={frozenLayout ? '96px' : '48px'}
+              className={frozenLayout ? 'object-contain' : 'object-cover'}
+              unoptimized
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[#94A3B8]">
+              🖼️
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="line-clamp-2 text-sm font-medium leading-5 text-[#1E293B]">
+            {item.name}
+          </p>
           <p className="text-xs text-[#64748B]">
             {item.price > 0 ? formatPrice(item.price) : '—'}
           </p>

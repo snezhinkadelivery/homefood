@@ -4,6 +4,13 @@ export function formatPrice(value: number): string {
   return `${value.toLocaleString('ru-RU').replace(/,/g, ' ')} ₩`;
 }
 
+export function getMenuImageUrl(fileName: string | null): string | null {
+  if (!fileName) return null;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/menu-images/${fileName}`;
+}
+
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });

@@ -181,7 +181,10 @@ INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_ord
   (4, 'Борщ домашний',     9000, 'frozen/borsh-domashniy.jpeg',  TRUE, 2),
   (4, 'Харчо',             9000, 'frozen/harcho.jpeg',           TRUE, 3),
   (4, 'Сиряктямури',       9000, 'frozen/siryaktyamuri.jpeg',    TRUE, 4),
-  (4, 'Грибной крем-суп',  9000, 'frozen/gribnoy-krem-sup.jpeg', TRUE, 5);
+  (4, 'Грибной крем-суп',  9000, 'frozen/gribnoy-krem-sup.jpeg', TRUE, 5),
+  (4, 'Тыквенный крем-суп', 9000, 'frozen/tykvennyy-krem-sup..jpeg', TRUE, 6),
+  (4, 'Пуктяй',            9000, 'frozen/pyktyai.jpeg',          TRUE, 7),
+  (4, 'Солянка',           9000, 'frozen/solyanka.jpeg',         TRUE, 8);
 
 -- Активные блюда — Вторые блюда Заморозка (category_id = 5)
 INSERT INTO menu_items (category_id, name, price, image_url, is_active, sort_order) VALUES

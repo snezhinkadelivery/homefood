@@ -14,6 +14,7 @@ type Order = {
   order_number: string;
   user_tg_id: number | null;
   customer_name: string;
+  phone: string;
   address_text: string | null;
   address_photo_url: string | null;
   items_json: OrderItemJson[];
@@ -141,6 +142,7 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
       const adminText =
         `🔔 Новый заказ ${o.order_number}\n\n` +
         `👤 ${o.customer_name} (tg: ${o.user_tg_id ?? 'нет'})\n` +
+        `📞 Телефон: ${o.phone}\n` +
         `🛒 ${(o.items_json ?? []).map((i) => `${i.name} × ${i.qty}`).join(', ')}\n` +
         `💳 Итого: ${formatPrice(o.total)}\n` +
         `📍 Адрес: ${o.address_text ?? 'фото прикреплено ниже'}`;

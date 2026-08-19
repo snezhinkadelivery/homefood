@@ -17,6 +17,7 @@ type Order = {
   phone: string;
   address_text: string | null;
   address_photo_url: string | null;
+  comment: string | null;
   items_json: OrderItemJson[];
   subtotal: number;
   delivery_fee: number;
@@ -139,12 +140,16 @@ export async function sendOrderCreatedNotification(orderId: number): Promise<voi
     console.log(`[orderCreated] adminIds=${JSON.stringify(adminIds)}`);
 
     if (adminIds.length > 0) {
+      const commentLine = o.comment?.trim()
+        ? `💬 Пожелания: ${o.comment.trim()}\n`
+        : '';
       const adminText =
         `🔔 Новый заказ ${o.order_number}\n\n` +
         `👤 ${o.customer_name} (tg: ${o.user_tg_id ?? 'нет'})\n` +
         `📞 Телефон: ${o.phone}\n` +
         `🛒 ${(o.items_json ?? []).map((i) => `${i.name} × ${i.qty}`).join(', ')}\n` +
         `💳 Итого: ${formatPrice(o.total)}\n` +
+        commentLine +
         `📍 Адрес: ${o.address_text ?? 'фото прикреплено ниже'}`;
 
       for (const adminId of adminIds) {

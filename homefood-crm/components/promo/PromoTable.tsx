@@ -25,7 +25,7 @@ function formatPrice(value: number): string {
   return `${new Intl.NumberFormat('ru-RU').format(value)} ₩`;
 }
 
-function PromoRow({ promo }: { promo: PromoCode }) {
+function PromoStatusSwitch({ promo }: { promo: PromoCode }) {
   const [active, setActive] = useState(promo.is_active);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +50,29 @@ function PromoRow({ promo }: { promo: PromoCode }) {
   }
 
   return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={saving}
+      role="switch"
+      aria-checked={active}
+      className={
+        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-60 ' +
+        (active ? 'bg-[#16A34A]' : 'bg-[#CBD5E1]')
+      }
+    >
+      <span
+        className={
+          'inline-block h-5 w-5 transform rounded-full bg-white shadow transition ' +
+          (active ? 'translate-x-5' : 'translate-x-0.5')
+        }
+      />
+    </button>
+  );
+}
+
+function PromoRow({ promo }: { promo: PromoCode }) {
+  return (
     <tr className="border-b border-[#E2E8F0] last:border-b-0">
       <td className="px-4 py-3 text-sm font-mono font-semibold text-[#1E293B]">
         {promo.code}
@@ -70,27 +93,45 @@ function PromoRow({ promo }: { promo: PromoCode }) {
         )}
       </td>
       <td className="px-4 py-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={saving}
-          role="switch"
-          aria-checked={active}
-          className={
-            'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-60 ' +
-            (active ? 'bg-[#16A34A]' : 'bg-[#CBD5E1]')
-          }
-        >
-          <span
-            className={
-              'inline-block h-5 w-5 transform rounded-full bg-white shadow transition ' +
-              (active ? 'translate-x-5' : 'translate-x-0.5')
-            }
-          />
-        </button>
+        <PromoStatusSwitch promo={promo} />
       </td>
       <td className="px-4 py-3 text-sm text-[#64748B]">{formatDate(promo.created_at)}</td>
     </tr>
+  );
+}
+
+function PromoMobileCard({ promo }: { promo: PromoCode }) {
+  const itemsTotal = promo.gross_items_total ?? 0;
+
+  return (
+    <article className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-mono text-lg font-bold text-[#1E293B]">{promo.code}</div>
+          <div className="mt-1 text-sm text-[#64748B]">Скидка {promo.discount_percent}%</div>
+        </div>
+        <PromoStatusSwitch promo={promo} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-[#F8FAFC] p-3">
+          <div className="text-[11px] font-semibold uppercase text-[#64748B]">Использований</div>
+          <div className={promo.used_count > 0 ? 'mt-1 font-bold text-[#2563EB]' : 'mt-1 text-[#94A3B8]'}>
+            {promo.used_count} раз
+          </div>
+        </div>
+        <div className="rounded-lg bg-[#F8FAFC] p-3">
+          <div className="text-[11px] font-semibold uppercase text-[#64748B]">Создан</div>
+          <div className="mt-1 font-semibold text-[#1E293B]">{formatDate(promo.created_at)}</div>
+        </div>
+        <div className="col-span-2 rounded-lg bg-[#EFF6FF] p-3">
+          <div className="text-[11px] font-semibold uppercase text-[#64748B]">Товары до скидки</div>
+          <div className={itemsTotal > 0 ? 'mt-1 text-lg font-bold text-[#2563EB]' : 'mt-1 text-[#94A3B8]'}>
+            {formatPrice(itemsTotal)}
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -133,21 +174,32 @@ export function PromoTable({ promos: initial }: { promos: PromoCode[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-[#1E293B]">Промокоды</h1>
           <p className="text-sm text-[#64748B]">Управление скидочными кодами</p>
         </div>
         <button
           type="button"
           onClick={() => setShowModal(true)}
-          className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#1D4ED8] active:scale-[0.98]"
+          className="w-full rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1D4ED8] active:scale-[0.98] sm:w-auto"
         >
           + Создать промокод
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+      <div className="space-y-3 md:hidden">
+        {promos.map((p) => (
+          <PromoMobileCard key={p.id} promo={p} />
+        ))}
+        {promos.length === 0 && (
+          <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-8 text-center text-sm text-[#94A3B8]">
+            Нет промокодов
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-[#E2E8F0] bg-white md:block">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">

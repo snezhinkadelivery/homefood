@@ -8,6 +8,7 @@ type PromoCode = {
   code: string;
   discount_percent: number;
   used_count: number;
+  gross_items_total?: number;
   is_active: boolean;
   created_at: string;
 };
@@ -18,6 +19,10 @@ function formatDate(iso: string): string {
     month: '2-digit',
     year: '2-digit',
   });
+}
+
+function formatPrice(value: number): string {
+  return `${new Intl.NumberFormat('ru-RU').format(value)} ₩`;
 }
 
 function PromoRow({ promo }: { promo: PromoCode }) {
@@ -55,6 +60,13 @@ function PromoRow({ promo }: { promo: PromoCode }) {
           <span className="font-bold text-[#2563EB]">{promo.used_count} раз</span>
         ) : (
           <span className="text-[#94A3B8]">0 раз</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {(promo.gross_items_total ?? 0) > 0 ? (
+          <span className="font-bold text-[#1E293B]">{formatPrice(promo.gross_items_total ?? 0)}</span>
+        ) : (
+          <span className="text-[#94A3B8]">{formatPrice(0)}</span>
         )}
       </td>
       <td className="px-4 py-3">
@@ -142,6 +154,7 @@ export function PromoTable({ promos: initial }: { promos: PromoCode[] }) {
               <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Код</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Скидка</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Использований</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Товары до скидки</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Статус</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase text-[#64748B]">Создан</th>
             </tr>
@@ -152,7 +165,7 @@ export function PromoTable({ promos: initial }: { promos: PromoCode[] }) {
             ))}
             {promos.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#94A3B8]">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#94A3B8]">
                   Нет промокодов
                 </td>
               </tr>

@@ -34,6 +34,11 @@ export function periodStart(period: Period): string | null {
     now.setHours(0, 0, 0, 0);
     return now.toISOString();
   }
+  if (period === 'week') {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString();
+  }
   // month
   const d = new Date();
   d.setDate(d.getDate() - 30);

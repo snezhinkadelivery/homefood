@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { periodStart } from '@/lib/utils';
-import type { DashboardMetrics, OrderItemJson, Period } from '@/types';
+import type { DashboardMetrics, OrderItemJson, Period, PromoAnalytics } from '@/types';
 
 type OrderRow = {
   total: number;
+  subtotal: number;
+  discount_amount: number;
+  promo_code: string | null;
   user_tg_id: number | null;
   items_json: OrderItemJson[];
   created_at: string;
@@ -16,7 +19,9 @@ export async function GET(request: Request) {
   const start = periodStart(period);
 
   try {
-    let query = supabaseAdmin.from('orders').select('total, user_tg_id, items_json, created_at');
+    let query = supabaseAdmin
+      .from('orders')
+      .select('total, subtotal, discount_amount, promo_code, user_tg_id, items_json, created_at');
     if (start) query = query.gte('created_at', start);
     const { data: ordersInPeriod, error: ordersErr } = await query;
     if (ordersErr) throw ordersErr;
@@ -70,6 +75,35 @@ export async function GET(request: Request) {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5);
 
+    const promoMap = new Map<string, Omit<PromoAnalytics, 'avgItemsTotal'>>();
+    for (const order of orders) {
+      const code = String(order.promo_code ?? '').trim().toUpperCase();
+      if (!code) continue;
+
+      const current = promoMap.get(code) ?? {
+        code,
+        ordersCount: 0,
+        grossItemsTotal: 0,
+        discountTotal: 0,
+        lastOrderAt: order.created_at,
+      };
+
+      current.ordersCount += 1;
+      current.grossItemsTotal += Number(order.subtotal ?? 0);
+      current.discountTotal += Number(order.discount_amount ?? 0);
+      if (new Date(order.created_at) > new Date(current.lastOrderAt)) {
+        current.lastOrderAt = order.created_at;
+      }
+      promoMap.set(code, current);
+    }
+
+    const promoAnalytics: PromoAnalytics[] = Array.from(promoMap.values())
+      .map((promo) => ({
+        ...promo,
+        avgItemsTotal: Math.round(promo.grossItemsTotal / promo.ordersCount),
+      }))
+      .sort((a, b) => b.grossItemsTotal - a.grossItemsTotal);
+
     const result: DashboardMetrics = {
       revenue,
       ordersCount,
@@ -78,6 +112,7 @@ export async function GET(request: Request) {
       returningCustomers,
       returningPercent,
       topItems,
+      promoAnalytics,
     };
 
     return NextResponse.json(result);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { PeriodToggle } from '@/components/dashboard/PeriodToggle';
+import { PromoAnalyticsTable } from '@/components/dashboard/PromoAnalyticsTable';
 import { TopItemsChart } from '@/components/dashboard/TopItemsChart';
 import { formatPrice } from '@/lib/utils';
 import type { DashboardMetrics, Period } from '@/types';
@@ -112,6 +113,7 @@ export default function DashboardPage() {
           </div>
 
           <TopItemsChart items={data.topItems} />
+          <PromoAnalyticsTable promos={data.promoAnalytics} />
         </>
       ) : null}
     </div>

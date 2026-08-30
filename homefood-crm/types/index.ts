@@ -63,7 +63,16 @@ export type Review = {
   created_at: string;
 };
 
-export type Period = 'today' | 'month' | 'all';
+export type Period = 'today' | 'week' | 'month' | 'all';
+
+export type PromoAnalytics = {
+  code: string;
+  ordersCount: number;
+  grossItemsTotal: number;
+  discountTotal: number;
+  avgItemsTotal: number;
+  lastOrderAt: string;
+};
 
 export type DashboardMetrics = {
   revenue: number;
@@ -73,4 +82,5 @@ export type DashboardMetrics = {
   returningCustomers: number;
   returningPercent: number;
   topItems: { name: string; qty: number }[];
+  promoAnalytics: PromoAnalytics[];
 };

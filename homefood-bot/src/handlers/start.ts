@@ -11,6 +11,7 @@ export async function startHandler(ctx: Context): Promise<void> {
         tg_id: from.id,
         username: from.username ?? null,
         first_name: from.first_name ?? null,
+        last_seen_at: new Date().toISOString(),
       },
       { onConflict: 'tg_id' },
     );

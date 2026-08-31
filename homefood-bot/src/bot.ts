@@ -5,11 +5,37 @@ import { startHandler } from './handlers/start';
 import { adminHandler } from './handlers/admin';
 import { myOrdersHandler } from './handlers/myorders';
 import { getAdminStatusKeyboard, syncAdminOrderMessages } from './notifications/adminOrderMessages';
+import {
+  broadcastCancelCommand,
+  broadcastCancelConfirmHandler,
+  broadcastCommand,
+  broadcastConfirmHandler,
+  broadcastTextHandler,
+} from './handlers/broadcast';
 
 const token = process.env.BOT_TOKEN;
 if (!token) throw new Error('BOT_TOKEN is required');
 
 export const bot = new Telegraf(token);
+
+// Обновляем активность только пользователей, которые уже запускали бота.
+bot.use(async (ctx, next) => {
+  if (ctx.from) {
+    const { error } = await supabase
+      .from('users')
+      .upsert(
+        {
+          tg_id: ctx.from.id,
+          username: ctx.from.username ?? null,
+          first_name: ctx.from.first_name ?? null,
+          last_seen_at: new Date().toISOString(),
+        },
+        { onConflict: 'tg_id' },
+      );
+    if (error) console.error('[activity] update error:', error);
+  }
+  await next();
+});
 
 // /start
 bot.command('start', startHandler);
@@ -19,6 +45,11 @@ bot.command('admin', adminHandler);
 
 // /myorders
 bot.command('myorders', myOrdersHandler);
+
+// Скрытая команда: не добавляем её в список команд Telegram.
+bot.command('broadcast', broadcastCommand);
+bot.command('broadcast_cancel', broadcastCancelCommand);
+bot.on('text', broadcastTextHandler);
 
 // Оценка отзыва: review_ORDERID_RATING
 bot.action(/^review_(\d+)_([1-5])$/, async (ctx) => {
@@ -147,6 +178,9 @@ bot.action(/^copy_account_(.+)$/, async (ctx) => {
     console.error('[copy_account callback] error:', err);
   }
 });
+
+bot.action('broadcast_confirm', broadcastConfirmHandler);
+bot.action('broadcast_cancel_confirm', broadcastCancelConfirmHandler);
 
 // Глобальный обработчик ошибок
 bot.catch((err, ctx) => {

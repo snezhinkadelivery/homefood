@@ -36,7 +36,7 @@ export async function broadcastCommand(ctx: Context): Promise<void> {
   pendingMessages.add(tgId);
   pendingConfirmations.delete(tgId);
   await ctx.reply(
-    '📣 Рассылка активным пользователям\n\n' +
+    '📣 Рассылка всем зарегистрированным пользователям\n\n' +
       'Пришлите следующим сообщением текст рассылки. Для отмены отправьте /broadcast_cancel.',
   );
 }
@@ -64,9 +64,7 @@ export async function broadcastTextHandler(ctx: Context): Promise<void> {
 
   const { count, error } = await supabase
     .from('users')
-    .select('tg_id', { count: 'exact', head: true })
-    .not('last_seen_at', 'is', null)
-    .gte('last_seen_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    .select('tg_id', { count: 'exact', head: true });
 
   if (error) {
     pendingConfirmations.delete(tgId);
@@ -76,7 +74,7 @@ export async function broadcastTextHandler(ctx: Context): Promise<void> {
   }
 
   await ctx.reply(
-    `Проверьте текст рассылки. Получателей за последние 30 дней: ${count ?? 0}\n\n` +
+    `Проверьте текст рассылки. Получателей: ${count ?? 0}\n\n` +
       formattedText,
     {
       parse_mode: 'Markdown',
@@ -106,9 +104,7 @@ export async function broadcastConfirmHandler(ctx: Context): Promise<void> {
 
   const { data, error } = await supabase
     .from('users')
-    .select('tg_id')
-    .not('last_seen_at', 'is', null)
-    .gte('last_seen_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    .select('tg_id');
 
   if (error) {
     await ctx.reply('❌ Не удалось загрузить получателей.');

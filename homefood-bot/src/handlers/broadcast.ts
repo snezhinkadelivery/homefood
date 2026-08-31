@@ -5,6 +5,18 @@ type BroadcastUser = { tg_id: number };
 
 const pendingMessages = new Set<number>();
 const pendingConfirmations = new Map<number, string>();
+const BROADCAST_BUTTON_TEXT = 'Заказать за 30 000 ₩';
+
+function broadcastMarkup() {
+  const tmaUrl = process.env.TMA_URL?.trim();
+  return tmaUrl
+    ? { inline_keyboard: [[{ text: BROADCAST_BUTTON_TEXT, web_app: { url: tmaUrl } }]] }
+    : undefined;
+}
+
+function formatBroadcastText(text: string): string {
+  return text.replace(/\*\*(.+?)\*\*/gs, '*$1*');
+}
 
 function getBroadcastAdminIds(): number[] {
   return (process.env.BROADCAST_ADMIN_TG_IDS ?? '')
@@ -47,7 +59,8 @@ export async function broadcastTextHandler(ctx: Context): Promise<void> {
   if (!text || text.startsWith('/')) return;
 
   pendingMessages.delete(tgId);
-  pendingConfirmations.set(tgId, text);
+  const formattedText = formatBroadcastText(text);
+  pendingConfirmations.set(tgId, formattedText);
 
   const { count, error } = await supabase
     .from('users')
@@ -64,8 +77,9 @@ export async function broadcastTextHandler(ctx: Context): Promise<void> {
 
   await ctx.reply(
     `Проверьте текст рассылки. Получателей за последние 30 дней: ${count ?? 0}\n\n` +
-      text,
+      formattedText,
     {
+      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[
           { text: '✅ Запустить', callback_data: 'broadcast_confirm' },
@@ -108,7 +122,10 @@ export async function broadcastConfirmHandler(ctx: Context): Promise<void> {
 
   for (const user of users) {
     try {
-      await ctx.telegram.sendMessage(user.tg_id, text);
+      await ctx.telegram.sendMessage(user.tg_id, text, {
+        parse_mode: 'Markdown',
+        reply_markup: broadcastMarkup(),
+      });
       sent += 1;
     } catch (sendError) {
       failed += 1;
